@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="totalvoice_form">
+        <field name="name">totalvoice.form</field>
+        <field name="model">totalvoice.base</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="TotalVoice">
+                <h1>Development Stage</h1>
+            </form>
+        </field>
+  </record>
+
+  <record model="ir.ui.view" id="totalvoice_tree">
+        <field name="name">totalvoice.tree</field>
+        <field name="model">totalvoice.base</field>
+        <field name="type">tree</field>
+        <field name="arch" type="xml">
+            <tree string="TotalVoice_Tree">
+
+            </tree>
+        </field>
+  </record>
+
+  <record model="ir.actions.act_window" id="action_totalvoice_base_view">
+    <field name="name">TotalVoice_Details</field>
+    <field name="view_type">form</field>
+    <field name="view_mode">tree,form</field>
+    <field name="res_model">totalvoice.base</field>
+  </record>
+
+
+  <menuitem name="TotalVoice_Service" icon="terp-project" id="TotalVoice" />
+  <menuitem name="TotalVoice_Child" parent="TotalVoice" id="TotalVoice_Child" />
+  <menuitem name="TotalVoice_Child2" parent="TotalVoice_Child" id="TotalVoice_Child2"
+            action="action_totalvoice_base_view" />
+ </odoo>
