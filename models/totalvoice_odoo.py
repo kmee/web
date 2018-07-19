@@ -3,6 +3,7 @@
 from odoo import models, fields, api
 
 from totalvoice.cliente import Cliente
+import json
 
 client = Cliente("49c31c417f21915f1ced29182c5dea56", 'api.totalvoice.com.br')
 
@@ -35,7 +36,13 @@ class TotalVoiceBase(models.Model):
     @api.multi
     def send_sms(self):
         for record in self:
-            response = client.sms.enviar(record.number_to, record.message)
+            response = client.sms.enviar(record.number_to, record.message, resposta_usuario=True)
 
             record.response = response
 
+    @api.multi
+    def get_sms_status(self):
+        for record in self:
+            response = json.loads(record.response)
+            sms = json.loads(client.sms.get_by_id(str(response['dados']['id'])))
+            print(sms)
