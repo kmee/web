@@ -6,32 +6,49 @@
         <field name="type">form</field>
         <field name="arch" type="xml">
             <form string="TotalVoice">
-                <h1>Development Stage</h1>
+            <header>
+                <button name="send_sms" type="object" String="Send SMS"
+                        class="oe_highlight" icon="fa-commenting-o" confirm="Are you sure want to send an SMS"
+                        attrs="{'invisible':[('response','!=',False)]}"
+                        help="This button will send an SMS " />
+            </header>
+            <sheet>
+                <group string="Send SMS" style="width: 40%%" col="2" colspan="2">
+                    <field name="number_to" />
+                    <field name="message" />
+                    <field name="response" />
+                </group>
+            </sheet>
             </form>
         </field>
-  </record>
+    </record>
 
-  <record model="ir.ui.view" id="totalvoice_tree">
+    <record model="ir.ui.view" id="totalvoice_tree">
         <field name="name">totalvoice.tree</field>
         <field name="model">totalvoice.base</field>
         <field name="type">tree</field>
         <field name="arch" type="xml">
             <tree string="TotalVoice_Tree">
-
+                <field name="number_to" />
+                <field name="message" />
             </tree>
         </field>
-  </record>
-
-  <record model="ir.actions.act_window" id="action_totalvoice_base_view">
-    <field name="name">TotalVoice_Details</field>
-    <field name="view_type">form</field>
-    <field name="view_mode">tree,form</field>
-    <field name="res_model">totalvoice.base</field>
-  </record>
+    </record>
 
 
-  <menuitem name="TotalVoice_Service" icon="terp-project" id="TotalVoice" />
-  <menuitem name="TotalVoice_Child" parent="TotalVoice" id="TotalVoice_Child" />
-  <menuitem name="TotalVoice_Child2" parent="TotalVoice_Child" id="TotalVoice_Child2"
+
+
+
+    <record model="ir.actions.act_window" id="action_totalvoice_base_view">
+        <field name="name">TotalVoice_Details</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">tree,form</field>
+        <field name="res_model">totalvoice.base</field>
+    </record>
+
+
+    <menuitem name="TotalVoice" icon="terp-project" id="TotalVoice" />
+    <menuitem name="Services" parent="TotalVoice" id="TotalVoice_Services" />
+    <menuitem name="SMS" parent="TotalVoice_Services" id="TotalVoice_SMS"
             action="action_totalvoice_base_view" />
  </odoo>
