@@ -56,6 +56,11 @@
                 <group string="Send SMS" col="4">
 
                     <group col="4" colspan="2">
+                        <field name="image" widget="image" class="oe_left oe_avatar" nolabel="1"
+                               options="{&quot;preview_image&quot;: &quot;image_medium&quot;, &quot;size&quot;: [90, 90]}"/>
+                        <newline/>
+                        <field name="partner_id" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
+                        <newline/>
                         <field name="number_to" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
                         <field name="wait_for_answer" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
                         <field name="message" colspan="4" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
@@ -87,6 +92,7 @@
         <field name="type">tree</field>
         <field name="arch" type="xml">
             <tree string="TotalVoice_Tree">
+                <field name="partner_id" />
                 <field name="number_to" />
                 <field name="message" />
                 <field name="state" />

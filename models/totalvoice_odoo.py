@@ -5,6 +5,7 @@ from datetime import datetime
 
 from totalvoice.cliente import Cliente
 import json
+import re
 
 client = Cliente("49c31c417f21915f1ced29182c5dea56", 'api.totalvoice.com.br')
 date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
@@ -37,6 +38,28 @@ class TotalVoiceMessage(models.Model):
 class TotalVoiceBase(models.Model):
     _name = 'totalvoice.base'
     _inherits = {'totalvoice.message': 'message_id'}
+    _rec_name = 'partner_id'
+
+    partner_id = fields.Many2one(
+        comodel_name='res.partner',
+        string='Contact',
+        required=True,
+        domain="[('mobile', '!=', False)]",
+    )
+
+    image = fields.Binary(
+        string='Contact Avatar',
+        related='partner_id.image',
+        readonly=True,
+    )
+
+    image_medium = fields.Binary(
+        related='partner_id.image_medium',
+    )
+
+    image_small = fields.Binary(
+        related='partner_id.image_small',
+    )
 
     message_id = fields.Many2one(
         comodel_name='totalvoice.message',
@@ -66,9 +89,10 @@ class TotalVoiceBase(models.Model):
     )
 
     number_to = fields.Char(
-        string='Contact Number',
-        required=True,
-        help="Provide your contact's number",
+        string='Phone',
+        related='partner_id.mobile',
+        readonly=True,
+        help="Contact's number",
     )
 
     wait_for_answer = fields.Boolean(
@@ -84,12 +108,18 @@ class TotalVoiceBase(models.Model):
     @api.multi
     def send_sms(self):
         for record in self:
+
+            mobile = re.sub('\D', '', record.number_to)
             response = client.sms.enviar(
-                record.number_to, record.message,
+                mobile, record.message,
                 resposta_usuario=record.wait_for_answer
             )
 
             response = json.loads(response)
+
+            data = response.get('dados')
+            record.server_message = 'Motivo: ' + str(response.get('motivo')) + \
+                                    ' - ' + response.get('mensagem')
 
             if not response.get('sucesso'):
                 record.state = 'failed'
@@ -99,11 +129,7 @@ class TotalVoiceBase(models.Model):
             if record.wait_for_answer:
                 record.state = 'waiting'
 
-            data = response.get('dados')
-
             record.sms_id = data.get('id')
-            record.server_message = 'Motivo: ' + str(response.get('motivo')) + \
-                                    ' - ' + response.get('mensagem')
 
             record.message_date = fields.Datetime.now()
 
