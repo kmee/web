@@ -10,6 +10,7 @@ import re
 client = Cliente("49c31c417f21915f1ced29182c5dea56", 'api.totalvoice.com.br')
 date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
 
+
 class TotalVoiceMessage(models.Model):
     _name = 'totalvoice.message'
 
@@ -17,6 +18,13 @@ class TotalVoiceMessage(models.Model):
         string='SMS ID',
         readonly=True,
         help="SMS ID provided by Total Voice's server"
+    )
+
+    active_sms_id = fields.Integer(
+        string='SMS ID',
+        readonly=True,
+        invisible=True,
+        help="Active SMS ID waiting for answers"
     )
 
     coversation_id = fields.Many2one(
@@ -32,6 +40,12 @@ class TotalVoiceMessage(models.Model):
     message_date = fields.Datetime(
         string='Message Date',
         readonly=True,
+    )
+
+    message_origin = fields.Selection(
+        selection=[('sent', 'Sent'),
+                   ('received', 'Received')],
+        default='received',
     )
 
 
@@ -78,14 +92,18 @@ class TotalVoiceBase(models.Model):
         invisible=True,
     )
 
-    state = fields.Selection([
-        ('draft', 'Draft'),
-        ('sent', 'Sent'),
-        ('waiting', 'Waiting Answer'),
-        ('done', 'Done'),
-        ('failed', 'Failed')],
+    state = fields.Selection(
+        selection=[('draft', 'Draft'),
+                   ('waiting', 'Waiting Answer'),
+                   ('done', 'Done'),
+                   ('failed', 'Failed')],
         default='draft',
         readonly=True,
+    )
+
+    subject = fields.Selection(
+        selection=[('assign_task', 'Assign a Task')],
+        default='assign_task',
     )
 
     number_to = fields.Char(
@@ -93,6 +111,11 @@ class TotalVoiceBase(models.Model):
         related='partner_id.mobile',
         readonly=True,
         help="Contact's number",
+    )
+
+    number_to_raw = fields.Char(
+        compute='_number_to_raw',
+        store=True,
     )
 
     wait_for_answer = fields.Boolean(
@@ -105,43 +128,73 @@ class TotalVoiceBase(models.Model):
         size=160,
     )
 
+    @api.depends('number_to')
+    def _number_to_raw(self):
+        self.number_to_raw = re.sub('\D', '', self.number_to)
+
     @api.multi
-    def send_sms(self):
+    def send_sms(self, env=False, message=False, wait=True):
+        """
+        Send an SMS to the selected res_partner
+        :param message: If this isn't None, then the SMS sent will be added
+        in the conversation as a reply to the user's last answer
+        :param wait: Should this message wait for new answers?
+        """
         for record in self:
 
-            mobile = re.sub('\D', '', record.number_to)
+            send_message = message or record.message
+            wait_for_answer = wait and record.wait_for_answer
             response = client.sms.enviar(
-                mobile, record.message,
-                resposta_usuario=record.wait_for_answer
+                record.number_to_raw, send_message,
+                resposta_usuario=wait_for_answer
             )
 
             response = json.loads(response)
-
             data = response.get('dados')
-            record.server_message = 'Motivo: ' + str(response.get('motivo')) + \
-                                    ' - ' + response.get('mensagem')
 
-            if not response.get('sucesso'):
-                record.state = 'failed'
-                return
-            record.state = 'sent'
-
-            if record.wait_for_answer:
+            if not wait_for_answer:
+                record.state = 'done'
+            else:
                 record.state = 'waiting'
 
-            record.sms_id = data.get('id')
+            # if this function is being called for the first time in this
+            # conversation
+            if not message:
 
-            record.message_date = fields.Datetime.now()
+                record.server_message = 'Motivo: ' + \
+                                        str(response.get('motivo')) + ' - ' +\
+                                        response.get('mensagem')
+
+                if not response.get('sucesso'):
+                    record.state = 'failed'
+                    return
+
+                record.sms_id = record.active_sms_id = data.get('id')
+
+                record.message_date = fields.Datetime.now()
+
+            # Else means that the system is replying the user with a new SMS
+            else:
+                record.active_sms_id = data.get('id')
+
+                new_message = {
+                    'message_date': fields.Datetime.now(),
+                    'sms_id': data.get('id'),
+                    'message': send_message,
+                    'coversation_id': record.id,
+                    'message_origin': 'sent',
+                }
+
+                self.env['totalvoice.message'].create(new_message)
 
     @api.multi
     def get_sms_status(self):
         for record in self:
-            sms = json.loads(client.sms.get_by_id(str(record.sms_id)))
+            sms = json.loads(client.sms.get_by_id(str(record.active_sms_id)))
             data = sms.get('dados')
             answers = data.get('respostas')
 
             if answers:
-                record.state = 'done'
                 for answer in answers:
                     if answer['id'] in record.answer_ids.mapped('sms_id'):
                         continue
@@ -152,4 +205,28 @@ class TotalVoiceBase(models.Model):
                         'message': answer['resposta'],
                         'coversation_id': record.id,
                     }
-                    self.env['totalvoice.message'].create(new_answer)
+                    answer_id = \
+                        self.env['totalvoice.message'].create(new_answer)
+                    self.review_sms_answer(answer_id)
+
+    def review_sms_answer(self, answer):
+        if not answer.message:
+            return
+        func = str(self.subject) + '_' + str(answer.message)
+        try:
+            eval('self.%s()' % func)
+        except Exception:
+            new_message = 'Opcao selecionada invalida. Tente novamente. ' + \
+                          self.message
+            self.send_sms(message=new_message, wait=True)
+
+        finally:
+            return
+
+    def assign_task_0(self):
+        new_message = "Opcao Selecionada: 0. Voce NAO foi designado a tarefa."
+        return self.send_sms(message=new_message, wait=False)
+
+    def assign_task_1(self):
+        new_message = "Opcao Selecionada: 1. Voce foi designado a tarefa."
+        return self.send_sms(message=new_message, wait=False)
