@@ -9,6 +9,22 @@ import re
 
 client = Cliente("49c31c417f21915f1ced29182c5dea56", 'api.totalvoice.com.br')
 date_format = '%Y-%m-%dT%H:%M:%S.%fZ'
+date_format_webhook = '%Y-%m-%dT%H:%M:%S-%f:00'
+
+class WebHook(models.Model):
+    _inherit = 'webhook'
+
+    totalvoice_id = fields.Many2one(
+        comodel_name='totalvoice.base',
+    )
+
+    @api.one
+    def run_totalvoice_https(self):
+        # You will have all request data in
+        # variable: self.env.request
+        return self.totalvoice_id.get_sms_status(
+            received_message=[self.env.request.jsonrequest])
+
 
 
 class TotalVoiceMessage(models.Model):
@@ -92,6 +108,16 @@ class TotalVoiceBase(models.Model):
         invisible=True,
     )
 
+    webhook_id = fields.One2many(
+        comodel_name='webhook',
+        inverse_name='totalvoice_id',
+        string='Webhook',
+        readonly=True,
+        invisible=True,
+        default=lambda self: self.env.ref(
+            'totalvoice_odoo.webhook_totalvoice'),
+    )
+
     state = fields.Selection(
         selection=[('draft', 'Draft'),
                    ('waiting', 'Waiting Answer'),
@@ -120,6 +146,11 @@ class TotalVoiceBase(models.Model):
 
     wait_for_answer = fields.Boolean(
         default=False,
+    )
+
+    auto_resend = fields.Boolean(
+        string='Auto-Resend',
+        default=True,
     )
 
     server_message = fields.Char(
@@ -162,7 +193,7 @@ class TotalVoiceBase(models.Model):
             if not message:
 
                 record.server_message = 'Motivo: ' + \
-                                        str(response.get('motivo')) + ' - ' +\
+                                        str(response.get('motivo')) + ' - ' + \
                                         response.get('mensagem')
 
                 if not response.get('sucesso'):
@@ -188,11 +219,13 @@ class TotalVoiceBase(models.Model):
                 self.env['totalvoice.message'].create(new_message)
 
     @api.multi
-    def get_sms_status(self):
+    def get_sms_status(self, env=False, received_message=False):
         for record in self:
-            sms = json.loads(client.sms.get_by_id(str(record.active_sms_id)))
-            data = sms.get('dados')
-            answers = data.get('respostas')
+
+            answers = received_message or \
+                      json.loads(
+                          client.sms.get_by_id(str(record.active_sms_id))).\
+                          get('dados').get('respostas')
 
             if answers:
                 for answer in answers:
@@ -200,7 +233,9 @@ class TotalVoiceBase(models.Model):
                         continue
                     new_answer = {
                         'message_date': datetime.strptime(
-                            answer['data_resposta'], date_format),
+                            answer['data_resposta'],
+                            ((received_message and date_format_webhook)
+                             or date_format)),
                         'sms_id': answer['id'],
                         'message': answer['resposta'],
                         'coversation_id': record.id,
@@ -218,15 +253,20 @@ class TotalVoiceBase(models.Model):
         except Exception:
             new_message = 'Opcao selecionada invalida. Tente novamente. ' + \
                           self.message
-            self.send_sms(message=new_message, wait=True)
+            if self.auto_resend:
+                self.send_sms(message=new_message, wait=True)
 
         finally:
             return
 
     def assign_task_0(self):
+        if not self.auto_resend:
+            return
         new_message = "Opcao Selecionada: 0. Voce NAO foi designado a tarefa."
         return self.send_sms(message=new_message, wait=False)
 
     def assign_task_1(self):
+        if not self.auto_resend:
+            return
         new_message = "Opcao Selecionada: 1. Voce foi designado a tarefa."
         return self.send_sms(message=new_message, wait=False)

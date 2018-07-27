@@ -9,8 +9,9 @@
     'installable': True,
     'application': False,
     'images': ['images/main_screenshot.png'],
-    'depends': ['base'],
+    'depends': ['base', 'webhook'],
     'data': [
          'views/totalvoice_base_view.xml',
+         'views/totalvoice_webhook.xml',
     ],
 }

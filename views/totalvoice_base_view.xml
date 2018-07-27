@@ -61,6 +61,7 @@
                                options="{&quot;preview_image&quot;: &quot;image_medium&quot;, &quot;size&quot;: [90, 90]}"/>
                         <newline/>
                         <field name="partner_id" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
+                        <field name="auto_resend" attrs="{'readonly': [('state','not in', ('draft', 'failed'))], 'invisible':[('wait_for_answer','=',False)]}" />
                         <newline/>
                         <field name="number_to" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
                         <field name="wait_for_answer" attrs="{'readonly': [('state','not in', ('draft', 'failed'))]}" />
