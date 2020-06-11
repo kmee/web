@@ -11,7 +11,7 @@ class ResUsers(models.Model):
     _inherit = ["res.users", "mail.thread"]
 
     digital_signature = fields.Binary(
-        string="Digital Signature", oldname="signature_image", attachment=True
+        string="Digital Signature", attachment=True
     )
 
     @api.model
