@@ -1,12 +1,12 @@
-Use this widget by including::
+Use this widget by including:
 
     <field name="field_text_json" widget="json_graph" />
 
-For example::
+For example:
 
     <field name="values_data" widget="json_graph"/>
 
-The JSON needs to be like::
+The JSON needs to be like:
 
     info = {
         "type": "line",
@@ -32,7 +32,7 @@ The JSON needs to be like::
     }
     self.field_text_json = json.dumps(info)
 
-For example::
+For example:
 
     plot_dataset = [1, 2, 3, 4, 3, 2]
     labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
@@ -60,4 +60,5 @@ For example::
     }
     self.values_data = json.dumps(info)
 
-For more information, please see `Chart Js Documentation <https://www.chartjs.org/docs/2.9.4/>`.
+For more information, please see Chart Js Documentation
+\<https://www.chartjs.org/docs/2.9.4/\>.
