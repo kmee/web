@@ -8,7 +8,8 @@ export class JSONGraphWidget extends Component {
     setup() {
         this.chart = null;
         this.canvasRef = useRef("canvas");
-        this.data = JSON.parse(this.props.value);
+        const rawData = this.props.record.data[this.props.name];
+        this.data = rawData ? JSON.parse(rawData) : null;
 
         super.setup();
         onWillStart(() => loadJS("/web/static/lib/Chart/Chart.js"));
@@ -25,10 +26,18 @@ export class JSONGraphWidget extends Component {
         if (this.chart) {
             this.chart.destroy();
         }
+        if (!this.data || !this.canvasRef.el) {
+            return;
+        }
         // eslint-disable-next-line no-undef
         this.chart = new Chart(this.canvasRef.el, this.data);
         return this.chart;
     }
 }
+
+export const jsonGraphWidget = {
+    component: JSONGraphWidget,
+};
+
 JSONGraphWidget.template = "web_widget_json_graph.JSONGraph";
-registry.category("fields").add("json_graph", JSONGraphWidget);
+registry.category("fields").add("json_graph", jsonGraphWidget);
